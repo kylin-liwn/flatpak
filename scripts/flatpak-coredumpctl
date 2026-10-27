@@ -128,9 +128,18 @@ def pager_stream(use_pager: bool) -> Iterator[IO[str]]:
 
     try:
         yield out
+    except BrokenPipeError:
+        # The pager exited before all the output was written, for example
+        # because the user quit it early. There is nothing left to write to,
+        # so don't print a traceback.
+        if proc is None:
+            raise
     finally:
         if proc is not None and proc.stdin is not None:
-            proc.stdin.close()
+            try:
+                proc.stdin.close()
+            except BrokenPipeError:
+                pass
             proc.wait()
 
 class TextStyle(Enum):
